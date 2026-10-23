@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import { type Dictionary, format } from "@/i18n";
 import type { Locale } from "@/i18n/config";
 import { CARD_THEMES, type CardTheme, type Palette } from "@/lib/palette";
-import type { MediaInfo, ResolveResponse } from "@/lib/types";
+import type { MediaEvent, MediaEventRequest, MediaInfo, ResolveResponse } from "@/lib/types";
 
 type State =
   | { status: "idle" }
@@ -31,6 +31,16 @@ async function errorMessage(res: Response, t: Dictionary): Promise<string> {
   } catch {
     return format(t.notices.httpError, { status: res.status });
   }
+}
+
+/** Fire and forget: popularity stats must never get in the way of the card. */
+function track(event: MediaEventRequest) {
+  void fetch("/api/events", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(event),
+    keepalive: true,
+  }).catch(() => {});
 }
 
 /** Lucide clipboard-paste. */
@@ -112,8 +122,8 @@ export function ShareForm({
   const info = state.status === "ready" ? state.info : null;
   const isPlaylist = info?.kind === "playlist";
 
-  const cardPath = useMemo(() => {
-    if (!info) return "";
+  const { cardPath, edited } = useMemo(() => {
+    if (!info) return { cardPath: "", edited: false };
     const p = new URLSearchParams({ url: info.url, lang: locale, theme });
     const nextTitle = debouncedTitle.trim();
     if (nextTitle && nextTitle !== info.title) p.set("title", nextTitle);
@@ -121,7 +131,7 @@ export function ShareForm({
     if (debouncedArtists.trim() !== original) {
       p.set(isPlaylist ? "curator" : "artists", debouncedArtists.trim());
     }
-    return "/api/card?" + p.toString();
+    return { cardPath: "/api/card?" + p.toString(), edited: p.has("title") || p.has("artists") || p.has("curator") };
   }, [info, isPlaylist, locale, theme, debouncedTitle, debouncedArtists]);
 
   // Derived, not stored: an effect that switched it on could lose the race with a
@@ -182,6 +192,7 @@ export function ShareForm({
         setTheme("auto");
         scrollOnReady.current = true;
         setState({ status: "ready", info: body.info, palette: body.palette });
+        track({ url: body.info.url, type: "created", theme: "auto", edited: false });
       } catch (err) {
         setState({ status: "error", message: err instanceof Error ? err.message : t.notices.unexpected });
       }
@@ -217,6 +228,10 @@ export function ShareForm({
     return res.blob();
   };
 
+  const trackExport = (type: MediaEvent) => {
+    if (info) track({ url: info.url, type, theme, edited });
+  };
+
   const download = async () => {
     try {
       const url = URL.createObjectURL(await getBlob());
@@ -225,6 +240,7 @@ export function ShareForm({
       a.download = filename;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
+      trackExport("download");
     } catch {
       setNotice(t.notices.unexpected);
     }
@@ -234,6 +250,7 @@ export function ShareForm({
     try {
       const file = new File([await getBlob()], filename, { type: "image/png" });
       await navigator.share({ files: [file], title });
+      trackExport("share");
     } catch (err) {
       if ((err as DOMException)?.name !== "AbortError") setNotice(t.notices.shareFailed);
     }
@@ -242,6 +259,7 @@ export function ShareForm({
   const copyImage = async () => {
     try {
       await navigator.clipboard.write([new ClipboardItem({ "image/png": await getBlob() })]);
+      trackExport("copy");
       setNotice("");
       setCopied(true);
       window.clearTimeout(copiedTimer.current);
