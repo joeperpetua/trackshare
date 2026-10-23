@@ -11,7 +11,7 @@ Paste a link to a song, an album or a playlist, and TrackShare gives you a 1080 
 3. **Change anything you like.** Edit the title and the artist names, and pick the colours.
 4. **Take it with you.** Download the PNG, copy the image to your clipboard, or use Share to send it to another app.
 
-There are no accounts and nothing to sign up for. Your link goes to the server only so it can fetch the details and draw the image, which is kept briefly so that asking again is fast.
+There are no accounts and nothing to sign up for. Your link goes to the server so it can fetch the details and draw the image, which is kept briefly so that asking again is fast. TrackShare also keeps a count of which songs, albums and playlists get made into cards, so it can show what is popular. The same song counts as one whichever service you shared it from. No account, device details or IP address are stored with it.
 
 ## Supported Services
 
@@ -56,7 +56,7 @@ npm run dev
 
 Then open http://localhost:3000.
 
-No accounts or keys are needed. Two optional settings go in a `.env` filem, copied from `.env.example`: `SITE_DOMAIN` sets the address printed on the card, and `YOUTUBE_API_KEY` adds song counts to YouTube playlists and gives YouTube albums a square cover instead of a cropped video thumbnail.
+No accounts or keys are needed. Three optional settings go in a `.env` file, copied from `.env.example`: `SITE_DOMAIN` sets the address printed on the card, `YOUTUBE_API_KEY` adds song counts to YouTube playlists and gives YouTube albums a square cover instead of a cropped video thumbnail, and `DATABASE_URL` points at a Postgres database where every card made, downloaded, copied or shared is recorded. Without it nothing is recorded. The tables are created the first time something is recorded.
 
 ## API 
 The app also answers at `/api/resolve?url=...` with the details it found, and `/api/card?url=...` with the image itself, if you would rather drive it from somewhere else.
