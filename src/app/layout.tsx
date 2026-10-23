@@ -7,6 +7,7 @@ import "@fontsource/inter-tight/700.css";
 import "@fontsource/jetbrains-mono/500.css";
 import "./globals.css";
 import { getRequestDictionary } from "@/i18n/server";
+import { Analytics } from "@vercel/analytics/next";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getRequestDictionary();
@@ -35,7 +36,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const { locale } = await getRequestDictionary();
   return (
     <html lang={locale}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
